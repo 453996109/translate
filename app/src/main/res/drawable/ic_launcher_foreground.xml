@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 字幕框 -->
+    <path
+        android:pathData="M35,36 H73 A9,9 0 0 1 82,45 V63 A9,9 0 0 1 73,72 H35 A9,9 0 0 1 26,63 V45 A9,9 0 0 1 35,36 Z"
+        android:strokeColor="#4C8DFF"
+        android:strokeWidth="3.5"
+        android:fillColor="#1B3A6B"
+        android:fillAlpha="0.55" />
+
+    <!-- 第一行 -->
+    <path
+        android:pathData="M35,46 H73 A2,2 0 0 1 73,50 H35 A2,2 0 0 1 35,46 Z"
+        android:fillColor="#E8EDF5" />
+
+    <!-- 第二行 -->
+    <path
+        android:pathData="M35,55 H61 A2,2 0 0 1 61,59 H35 A2,2 0 0 1 35,55 Z"
+        android:fillColor="#93A1B5" />
+
+</vector>

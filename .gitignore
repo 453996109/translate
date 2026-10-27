@@ -1,0 +1,21 @@
+# Gradle / 构建产物
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 本地依赖（AAR 需按 README 放到 app/libs/）
+# app/libs/sherpa-onnx.aar 建议保留在仓库里，体积 50 MB
+
+# 临时
+*.log
+.deps/
+.shots/
+
+# AI 助手工具目录（本地工作笔记，不入公开仓库）
+.workbuddy/

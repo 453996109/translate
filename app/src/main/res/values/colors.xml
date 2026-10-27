@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#0E1116</color>
+    <color name="surface">#171C24</color>
+    <color name="surface2">#1F2630</color>
+    <color name="line">#2A323E</color>
+    <color name="text">#E8EDF5</color>
+    <color name="text2">#93A1B5</color>
+    <color name="text3">#64708A</color>
+    <color name="accent">#4C8DFF</color>
+    <color name="accent_dim">#1B3A6B</color>
+    <color name="ok">#35C08B</color>
+    <color name="warn">#E0A43A</color>
+    <color name="bad">#E0556F</color>
+    <color name="ic_bg">#0E1116</color>
+</resources>

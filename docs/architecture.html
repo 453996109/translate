@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Windows 实时字幕逆向 → Android 移植</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1a1d23; --ink2:#4b5563; --ink3:#8a94a6;
+    --line:#e4e7ec; --line2:#d3d8e0;
+    --blue:#2f6fed; --blue-bg:#eef3fe;
+    --teal:#0f9b8e; --teal-bg:#e8f7f5;
+    --amber:#c77d0a; --amber-bg:#fdf4e3;
+    --violet:#7a5af8; --violet-bg:#f1eefe;
+    --rose:#d1437a; --rose-bg:#fdf0f5;
+    --mono:'JetBrains Mono','Cascadia Mono','SF Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+    line-height:1.65; font-size:15px;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:44px 26px 90px}
+  header.hero{margin-bottom:34px}
+  .eyebrow{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink3); font-weight:600}
+  h1{font-size:31px; line-height:1.25; margin:10px 0 12px; letter-spacing:-.02em}
+  h1 small{display:block; font-size:15px; font-weight:400; color:var(--ink2); letter-spacing:0; margin-top:8px}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px}
+  .chip{font-family:var(--mono); font-size:11.5px; padding:5px 10px; border-radius:999px;
+        background:var(--card); border:1px solid var(--line2); color:var(--ink2)}
+  .chip b{color:var(--ink); font-weight:600}
+
+  section{margin:42px 0}
+  h2{font-size:19px; margin:0 0 6px; letter-spacing:-.01em; display:flex; align-items:center; gap:10px}
+  h2 .num{font-family:var(--mono); font-size:11px; color:#fff; background:var(--ink); width:20px; height:20px;
+          border-radius:5px; display:inline-flex; align-items:center; justify-content:center; flex:none}
+  .lede{color:var(--ink2); margin:0 0 18px; font-size:14.5px; max-width:78ch}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px 24px;
+        box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .card.pad0{padding:10px 12px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media (max-width:880px){ .grid2{grid-template-columns:1fr} }
+
+  /* pipeline */
+  .pipe{display:flex; align-items:stretch; gap:0; overflow-x:auto; padding:6px 2px 2px}
+  .step{flex:1 1 0; min-width:118px; position:relative; padding:14px 12px; border-radius:11px;
+        background:#fbfcfe; border:1px solid var(--line)}
+  .step + .step{margin-left:22px}
+  .step + .step::before{content:""; position:absolute; left:-19px; top:50%; width:14px; height:1.5px; background:var(--line2)}
+  .step + .step::after{content:""; position:absolute; left:-7px; top:50%; width:6px; height:6px;
+        border-top:1.5px solid var(--line2); border-right:1.5px solid var(--line2);
+        transform:translateY(-50%) rotate(45deg)}
+  .step .k{font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--ink3); text-transform:uppercase}
+  .step .t{font-size:13.5px; font-weight:650; margin:3px 0 6px}
+  .step .d{font-family:var(--mono); font-size:11px; color:var(--ink2); line-height:1.5}
+  .step.b{background:var(--blue-bg); border-color:#cfdefc}
+  .step.t2{background:var(--teal-bg); border-color:#c7ebe6}
+  .step.a{background:var(--amber-bg); border-color:#f2e0bf}
+  .step.v{background:var(--violet-bg); border-color:#ded6fd}
+
+  /* tables */
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700;
+     background:#fafbfd}
+  tr:last-child td{border-bottom:none}
+  td code, .mono{font-family:var(--mono); font-size:12px}
+  .ok{color:var(--teal); font-weight:650}
+  .warn{color:var(--amber); font-weight:650}
+  .bad{color:var(--rose); font-weight:650}
+
+  /* mapping */
+  .map{display:grid; grid-template-columns:1fr 44px 1fr; gap:0; align-items:center}
+  .map .row{display:contents}
+  .map .l,.map .r{padding:11px 14px; border:1px solid var(--line); background:#fbfcfe; font-size:13.5px}
+  .map .l{border-radius:9px 0 0 9px}
+  .map .r{border-radius:0 9px 9px 0; background:#fff}
+  .map .arw{text-align:center; color:var(--ink3); font-size:16px}
+  .map .l code,.map .r code{font-family:var(--mono); font-size:11.5px; color:var(--ink2); display:block; margin-top:3px}
+  .map .gap{height:9px; grid-column:1/-1}
+
+  /* latency */
+  .lat{margin-top:6px}
+  .lat .track{display:flex; height:26px; border-radius:7px; overflow:hidden; border:1px solid var(--line2); background:#fff}
+  .lat .seg{height:100%; display:flex; align-items:center; justify-content:center; font-size:10.5px;
+            font-family:var(--mono); color:#fff; white-space:nowrap; overflow:hidden}
+  .lat .rowline{display:grid; grid-template-columns:96px 1fr 74px; gap:12px; align-items:center; margin:9px 0}
+  .lat .name{font-size:12.5px; color:var(--ink2); font-weight:600}
+  .lat .tot{font-family:var(--mono); font-size:12px; text-align:right; color:var(--ink)}
+  .legend{display:flex; flex-wrap:wrap; gap:14px; margin-top:14px; font-size:12px; color:var(--ink2)}
+  .legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px}
+
+  .note{border-left:3px solid var(--blue); background:var(--blue-bg); padding:12px 16px; border-radius:0 8px 8px 0;
+        font-size:13.5px; color:#1c3a6e; margin-top:16px}
+  .note.warn{border-left-color:var(--amber); background:var(--amber-bg); color:#7a4c05}
+  .note.bad{border-left-color:var(--rose); background:var(--rose-bg); color:#8a1f47}
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:18px}
+  @media (max-width:760px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:11px; padding:14px 16px}
+  .kpi .v{font-family:var(--mono); font-size:20px; font-weight:600; letter-spacing:-.02em}
+  .kpi .l{font-size:11.5px; color:var(--ink3); margin-top:2px}
+  footer{margin-top:56px; padding-top:18px; border-top:1px solid var(--line); color:var(--ink3); font-size:12.5px}
+  svg{display:block; max-width:100%; height:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Reverse Engineering → Port Blueprint</div>
+  <h1>Windows 11「实时辅助字幕 / 实时翻译」
+    <small>把微软 195 MB 的私有离线模型拆开看，然后在 Android 上重建一条等价的流水线</small>
+  </h1>
+  <div class="chips">
+    <span class="chip">宿主 <b>Win11 25H2 · 26200.9711</b></span>
+    <span class="chip">引擎 <b>Azure Speech SDK · embedded</b></span>
+    <span class="chip">模型 <b>RNN-T 流式 · 4002 BPE</b></span>
+    <span class="chip">出帧 <b>40 ms</b></span>
+    <span class="chip">音频 <b>WASAPI 进程回环</b></span>
+    <span class="chip">权重 <b class="bad">不可再分发</b></span>
+  </div>
+</header>
+
+<section>
+  <h2><span class="num">1</span>组件分层</h2>
+  <p class="lede">从 `System32` 的存根一路点到 ONNX 张量：一共 5 层，层与层之间是 WinRT 激活 + C API 调用。</p>
+  <div class="card">
+    <svg viewBox="0 0 1040 380" role="img" aria-label="Live Captions 组件分层图">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#b6bfcd"/>
+        </marker>
+      </defs>
+
+      <!-- L1 -->
+      <rect x="20" y="18" width="1000" height="58" rx="10" fill="#fbfcfe" stroke="#e4e7ec"/>
+      <text x="38" y="41" font-size="11" font-family="monospace" fill="#8a94a6">L1 · 系统集成</text>
+      <rect x="38" y="48" width="238" height="22" rx="5" fill="#fff" stroke="#d3d8e0"/>
+      <text x="48" y="63" font-size="11.5" font-family="monospace" fill="#1a1d23">LiveCaptions.exe（存根）</text>
+      <rect x="290" y="48" width="270" height="22" rx="5" fill="#fff" stroke="#d3d8e0"/>
+      <text x="300" y="63" font-size="11.5" font-family="monospace" fill="#1a1d23">Win + Ctrl + L 热键 / 设置页开关</text>
+      <rect x="574" y="48" width="240" height="22" rx="5" fill="#fff" stroke="#d3d8e0"/>
+      <text x="584" y="63" font-size="11.5" font-family="monospace" fill="#1a1d23">AppExtension 模型包枚举</text>
+
+      <!-- L2 -->
+      <rect x="20" y="90" width="1000" height="72" rx="10" fill="#eef3fe" stroke="#cfdefc"/>
+      <text x="38" y="112" font-size="11" font-family="monospace" fill="#2f6fed">L2 · 应用层（Client.Core 包）</text>
+      <rect x="38" y="120" width="182" height="30" rx="6" fill="#fff" stroke="#cfdefc"/>
+      <text x="48" y="139" font-size="11.5" font-family="monospace" fill="#1a1d23">XamlApplication</text>
+      <rect x="232" y="120" width="212" height="30" rx="6" fill="#fff" stroke="#cfdefc"/>
+      <text x="242" y="139" font-size="11.5" font-family="monospace" fill="#1a1d23">LiveCaptions.dll · 页面</text>
+      <rect x="456" y="120" width="212" height="30" rx="6" fill="#fff" stroke="#cfdefc"/>
+      <text x="466" y="139" font-size="11.5" font-family="monospace" fill="#1a1d23">Desktop.dll · 窗口/AppBar</text>
+      <rect x="680" y="120" width="302" height="30" rx="6" fill="#fff" stroke="#2f6fed" stroke-dasharray="4 3"/>
+      <text x="690" y="139" font-size="11.5" font-family="monospace" fill="#2f6fed">BackendDll · CaptionBackend</text>
+
+      <!-- L3 -->
+      <rect x="20" y="178" width="1000" height="86" rx="10" fill="#e8f7f5" stroke="#c7ebe6"/>
+      <text x="38" y="200" font-size="11" font-family="monospace" fill="#0f9b8e">L3 · 语音引擎（Speech SDK）</text>
+      <rect x="38" y="208" width="200" height="30" rx="6" fill="#fff" stroke="#c7ebe6"/>
+      <text x="48" y="227" font-size="11.5" font-family="monospace" fill="#1a1d23">Speech.core.dll</text>
+      <rect x="250" y="208" width="200" height="30" rx="6" fill="#fff" stroke="#c7ebe6"/>
+      <text x="260" y="227" font-size="11.5" font-family="monospace" fill="#1a1d23">embedded.sr</text>
+      <rect x="462" y="208" width="228" height="30" rx="6" fill="#fff" stroke="#c7ebe6"/>
+      <text x="472" y="227" font-size="11.5" font-family="monospace" fill="#1a1d23">embedded.sr.runtime</text>
+      <rect x="702" y="208" width="180" height="30" rx="6" fill="#fff" stroke="#c7ebe6"/>
+      <text x="712" y="227" font-size="11.5" font-family="monospace" fill="#1a1d23">audio.sys</text>
+      <rect x="894" y="208" width="88" height="30" rx="6" fill="#fff" stroke="#c7ebe6"/>
+      <text x="902" y="227" font-size="11" font-family="monospace" fill="#1a1d23">telemetry</text>
+      <text x="38" y="254" font-size="11" font-family="monospace" fill="#0f9b8e">585 个 C 导出 · 85 个被 Live Captions 实际调用（延迟导入，实测）</text>
+
+      <!-- L4 -->
+      <rect x="20" y="280" width="1000" height="46" rx="10" fill="#f1eefe" stroke="#ded6fd"/>
+      <text x="38" y="301" font-size="11" font-family="monospace" fill="#7a5af8">L4 · 推理</text>
+      <rect x="132" y="288" width="270" height="28" rx="6" fill="#fff" stroke="#ded6fd"/>
+      <text x="142" y="306" font-size="11.5" font-family="monospace" fill="#1a1d23">ONNX Runtime（int8 动态量化）</text>
+      <text x="420" y="306" font-size="11" font-family="monospace" fill="#5b46c9">DynamicQuantizeLinear + MatMulInteger + DynamicQuantizeLSTM</text>
+
+      <!-- L5 -->
+      <rect x="20" y="342" width="1000" height="30" rx="8" fill="#fff" stroke="#e4e7ec"/>
+      <text x="38" y="362" font-size="11" font-family="monospace" fill="#8a94a6">L5 · 模型包 195 MB</text>
+      <text x="220" y="362" font-size="11.5" font-family="monospace" fill="#1a1d23">encoder 108M · punct 34M · lid 21M · decoder 16M · itn 6.8M · joint 2.1M · wt 2.0M · svad 1.4M</text>
+
+      <line x1="520" y1="76" x2="520" y2="88" stroke="#b6bfcd" stroke-width="1.4" marker-end="url(#ah)"/>
+      <line x1="520" y1="162" x2="520" y2="176" stroke="#b6bfcd" stroke-width="1.4" marker-end="url(#ah)"/>
+      <line x1="520" y1="264" x2="520" y2="278" stroke="#b6bfcd" stroke-width="1.4" marker-end="url(#ah)"/>
+      <line x1="520" y1="326" x2="520" y2="340" stroke="#b6bfcd" stroke-width="1.4" marker-end="url(#ah)"/>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">2</span>识别流水线（张量级）</h2>
+  <p class="lede">每个方块都是实测出来的接口，不是推测：形状来自 ONNX 图头，参数来自 <code>sr.ini</code>。</p>
+  <div class="card pad0" style="padding:16px 16px 8px">
+    <div class="pipe">
+      <div class="step"><div class="k">采集</div><div class="t">WASAPI 回环</div><div class="d">ActivateAudioInterfaceAsync<br>48000 Hz · float</div></div>
+      <div class="step"><div class="k">前端</div><div class="t">重采样 + mel</div><div class="d">16000 Hz<br>80-dim / 25ms / 10ms</div></div>
+      <div class="step b"><div class="k">编码</div><div class="t">Transformer ×24</div><div class="d">hidden_state[T,512]<br>cache_k/v [24,1,8,·,64]<br>cache_cnn [24,1,512,2]</div></div>
+      <div class="step b"><div class="k">预测</div><div class="t">LSTM ×2</div><div class="d">h/c [2,1,1024]<br>→ hidden[1,1,512]</div></div>
+      <div class="step b"><div class="k">联合</div><div class="t">Joint</div><div class="d">512 × 512<br>→ 4002 vocab</div></div>
+      <div class="step t2"><div class="k">搜索</div><div class="t">束搜索</div><div class="d">beam=3 · nbest=100<br>lattice · context=5</div></div>
+      <div class="step a"><div class="k">后处理</div><div class="t">ITN / 标点</div><div class="d">itntag 17 类<br>cappunc 3 类</div></div>
+      <div class="step v"><div class="k">输出</div><div class="t">字幕行</div><div class="d">text + offset<br>+ duration</div></div>
+    </div>
+    <p class="lede" style="margin:16px 0 4px; font-size:13px">
+      <b>40 ms</b> 是这套系统的节拍：CNN 子采样 2 帧 × 20 ms，每帧 10 ms，于是 token 帧率固定 25 Hz。
+      VAD 是独立模型（880 ms 窗），标点与 ITN 都是旁路，可关。
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">3</span>关键数据（实测）</h2>
+  <div class="grid2">
+    <div class="card">
+      <table>
+        <tr><th>模型</th><th>节点</th><th>权重</th></tr>
+        <tr><td class="mono">encoder.onnx</td><td>5,791</td><td>108 MB</td></tr>
+        <tr><td class="mono">punct/cappunc.onnx</td><td>445</td><td>34 MB</td></tr>
+        <tr><td class="mono">lid_quantized.onnx</td><td>63</td><td>21 MB</td></tr>
+        <tr><td class="mono">decoder.onnx</td><td>67</td><td>16 MB</td></tr>
+        <tr><td class="mono">joint.onnx</td><td>9</td><td>2.1 MB</td></tr>
+        <tr><td class="mono">wt.quantized.onnx</td><td>818</td><td>2.0 MB</td></tr>
+        <tr><td class="mono">svad_init.quantized.onnx</td><td>89</td><td>1.4 MB</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <table>
+        <tr><th>参数</th><th>值</th><th>出处</th></tr>
+        <tr><td>解码器类型</td><td class="mono">rnnt1</td><td>sr.ini</td></tr>
+        <tr><td>特征 / 帧移</td><td class="mono">80 / 10 ms</td><td>sr.ini</td></tr>
+        <tr><td>出帧间隔</td><td class="mono">40 ms</td><td>sr.ini</td></tr>
+        <tr><td>束宽 / N-best</td><td class="mono">3 / 100</td><td>sr.ini</td></tr>
+        <tr><td>VAD 阈值</td><td class="mono">0.60 / 段 0.35</td><td>sr.ini</td></tr>
+        <tr><td>热词权重</td><td class="mono">1.1</td><td>sr.ini</td></tr>
+        <tr><td>支持采样率</td><td class="mono">8000 / 16000</td><td>v10_model_info</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="note bad" style="margin-top:16px">
+    <b>模型文件头就是许可条款。</b>每个 <code>.onnx</code> 前 700 字节是同一段文本，明确禁止再分发、反向工程、
+    作为独立方案提供。→ <b>架构可搬，权重一个字节都不能搬。</b>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">4</span>Windows → Android 能力映射</h2>
+  <p class="lede">左列是系统级实现，右列是 Android 上唯一可行的对应能力。中间有 3 处必然折损。</p>
+  <div class="card">
+    <div class="map">
+      <div class="row"><div class="l">进程回环采集<code>MMDevAPI #17 · Process Loopback</code></div><div class="arw">→</div>
+        <div class="r">AudioPlaybackCapture<code>MediaProjection + AudioRecord (API 29+)</code></div></div>
+      <div class="gap"></div>
+      <div class="row"><div class="l">推流进 SDK<code>push_audio_input_stream_write</code></div><div class="arw">→</div>
+        <div class="r">RingBuffer + JNI<code>OnlineStream::AcceptWaveform</code></div></div>
+      <div class="gap"></div>
+      <div class="row"><div class="l">RNN-T 三件套<code>encoder / decoder / joint</code></div><div class="arw">→</div>
+        <div class="r">sherpa-onnx 流式 Zipformer<code>同族架构，参数可对照</code></div></div>
+      <div class="gap"></div>
+      <div class="row"><div class="l">标点 / ITN / 时间戳<code>cappunc + itn + wt</code></div><div class="arw">→</div>
+        <div class="r">sherpa 标点 + 正则规则 + 原生时间戳<code>省掉一个 wt 模型</code></div></div>
+      <div class="gap"></div>
+      <div class="row"><div class="l">翻译模型（NPU 门控）<code>speech_translation_model</code></div><div class="arw">→</div>
+        <div class="r">OPUS-MT / NLLB int8 on ORT<code>质量下降，体积可控</code></div></div>
+      <div class="gap"></div>
+      <div class="row"><div class="l">WinUI3 + DWM 悬浮窗<code>DwmSetWindowAttribute</code></div><div class="arw">→</div>
+        <div class="r">TYPE_APPLICATION_OVERLAY<code>WindowManager + Compose</code></div></div>
+      <div class="gap"></div>
+      <div class="row"><div class="l">贴边停靠（其他窗口让位）<code>SHAppBarMessage</code></div><div class="arw">→</div>
+        <div class="r" style="background:#fdf0f5">无等价能力<code>只能浮层，需半透明可拖拽</code></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">5</span>延迟预算</h2>
+  <p class="lede">目标与 Windows 同量级：纯字幕 300–500 ms，带翻译 500–800 ms。</p>
+  <div class="card">
+    <div class="lat">
+      <div class="rowline">
+        <div class="name">纯字幕</div>
+        <div class="track">
+          <div class="seg" style="width:8%;background:#9aa8bf">采集 40</div>
+          <div class="seg" style="width:20%;background:#7a5af8">推流块 100</div>
+          <div class="seg" style="width:46%;background:#2f6fed">编码 chunk 240</div>
+          <div class="seg" style="width:14%;background:#0f9b8e">解码 70</div>
+          <div class="seg" style="width:12%;background:#c77d0a">渲染 60</div>
+        </div>
+        <div class="tot">≈ 510 ms</div>
+      </div>
+      <div class="rowline">
+        <div class="name">字幕 + 翻译</div>
+        <div class="track">
+          <div class="seg" style="width:7%;background:#9aa8bf">采集</div>
+          <div class="seg" style="width:17%;background:#7a5af8">推流块</div>
+          <div class="seg" style="width:39%;background:#2f6fed">编码</div>
+          <div class="seg" style="width:11%;background:#0f9b8e">解码</div>
+          <div class="seg" style="width:15%;background:#d1437a">NMT 120</div>
+          <div class="seg" style="width:11%;background:#c77d0a">渲染</div>
+        </div>
+        <div class="tot">≈ 800 ms</div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:#9aa8bf"></i>采集/重采样</span>
+      <span><i style="background:#7a5af8"></i>推流缓冲</span>
+      <span><i style="background:#2f6fed"></i>编码器 chunk</span>
+      <span><i style="background:#0f9b8e"></i>解码+标点</span>
+      <span><i style="background:#d1437a"></i>机器翻译</span>
+      <span><i style="background:#c77d0a"></i>渲染/稳定化</span>
+    </div>
+    <div class="note warn" style="margin-top:18px">
+      最大的一块永远是<b>编码器 chunk</b>。想再压只能牺牲上下文：chunk 从 240 ms 降到 160 ms，代价是长句准确率掉 2–4 个点。
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">6</span>移植的三个硬约束</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="v">ALLOW_CAPTURE</div><div class="l">目标 App 可主动拒绝被采集，且失败时给的是<b>静音</b>不是错误</div></div>
+    <div class="kpi"><div class="v">~195 MB</div><div class="l">Windows 单语种模型体积；Android 换开源后可压到 40–100 MB</div></div>
+    <div class="kpi"><div class="v">NO APPBAR</div><div class="l">Android 没有"让其他窗口让位"的机制，贴边停靠需放弃</div></div>
+    <div class="kpi"><div class="v">LICENSE</div><div class="l">微软权重禁用；开源替代须逐个核对训练数据许可</div></div>
+  </div>
+  <div class="note">
+    完整技术细节见同目录 <code>01-rea-report.md</code>（逆向）与 <code>02-android-port-plan.md</code>（移植）。
+  </div>
+</section>
+
+<footer>
+  分析机：Windows 11 企业版 25H2 · 10.0.26200.9711 · x64 ｜ 取证：PE 导入/导出表、RTTI 修饰名、ONNX 图头、模型包配置、注册表
+  ｜ 生成于 2026-10-26
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<resources>
+    <string name="app_name">实时字幕</string>
+    <string name="app_subtitle">Windows 实时辅助字幕的安卓复刻 · 全离线</string>
+
+    <string name="section_status">状态</string>
+    <string name="section_permission">权限</string>
+    <string name="section_model">识别模型</string>
+    <string name="section_style">字幕样式</string>
+
+    <string name="perm_record">麦克风 / 音频录制权限</string>
+    <string name="perm_notify">通知权限（前台服务需要）</string>
+    <string name="perm_overlay">悬浮窗权限</string>
+    <string name="granted">已授权</string>
+    <string name="not_granted">未授权</string>
+    <string name="go_grant">去授权</string>
+
+    <string name="model_absent">未下载</string>
+    <string name="model_ready">就绪</string>
+    <string name="model_download">下载模型（约 189 MB）</string>
+    <string name="model_redownload">重新下载</string>
+
+    <string name="style_size">字号</string>
+    <string name="style_opacity">背景不透明度</string>
+    <string name="style_lines">保留行数</string>
+    <string name="style_bottom">距底部</string>
+    <string name="style_caps">大小写</string>
+    <string name="style_punct">自动标点</string>
+    <string name="style_punct_hint">句末补标点，长停顿补逗号（规则版，不额外占空间）</string>
+    <string name="style_adjust">调整位置和大小</string>
+    <string name="style_adjust_hint">中间拖动移动 · 右边拉宽 · 下边拉高 · 双指调宽度（30 秒无操作自动锁定）</string>
+    <string name="style_reset_box">恢复默认位置和大小</string>
+
+    <string name="start">开始字幕</string>
+    <string name="stop">停止字幕</string>
+
+    <string name="notif_title">实时字幕运行中</string>
+    <string name="notif_text">正在采集系统音频并本地识别</string>
+    <string name="notif_stop">停止</string>
+
+    <string name="overlay_hint">正在等待音频…</string>
+    <string name="capture_denied">未授予录屏权限，无法采集系统音频</string>
+</resources>
